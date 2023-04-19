@@ -8,12 +8,12 @@ namespace BD
 {
     public partial class Form1 : Form
     {
-        private string connectionString = String.Format("Server=localhost;Port=5432;" +
-                    "User Id=postgres;Password=Uhmmannie;Database=Northwind");
+        private string connectionString = String.Format("Server=localhost;Port=5432;" + // подключение к базе данных Northwind
+                    "User Id=postgres;Password=sudlenia;Database=Northwind");
         private NpgsqlConnection connection;
         NpgsqlCommand cmd = new NpgsqlCommand();
 
-        string select = "select * from products order by product_id";
+        string select = "select * from products order by product_id"; // запрос на вывод всех товаров в таблице
         public Form1()
         {
             InitializeComponent();
@@ -21,7 +21,7 @@ namespace BD
             connection = new NpgsqlConnection(connectionString);
             connection.Open();
 
-            comboBox1.Items.Add("Приостановлен");
+            comboBox1.Items.Add("Приостановлен"); // Отображение статуса заказа в виде слов, а не числовых значений
             comboBox1.Items.Add("Продаваемый");
 
             CreateComboBox("select category_id from products order by category_id", comboBox2);
@@ -29,12 +29,12 @@ namespace BD
             comboBox3.Items.Add("Приостановлен");
             comboBox3.Items.Add("Продаваемый");
 
-            CreateComboBox("select supplier_id from products order by supplier_id", comboBox4);
+            CreateComboBox("select supplier_id from suppliers order by supplier_id", comboBox4);
 
-            CreateComboBox("select category_id from products order by category_id", comboBox5);
+            CreateComboBox("select category_id from categories order by category_id", comboBox5);
 
         }
-        private void CreateComboBox(string query, ComboBox combobox)
+        private void CreateComboBox(string query, ComboBox combobox) // метод для создание ComboBox
         {
             List<string> list = new List<string>();
 
@@ -53,16 +53,16 @@ namespace BD
                 }
             }
             reader.Close();
-        }
-        private void Form1_Load(object sender, EventArgs e)
+        } 
+        private void Form1_Load(object sender, EventArgs e) // отображение всех полей из products при запуске
         {
             Select(select);
         }
-        private void Form1_Close(object sender, EventArgs e)
+        private void Form1_Close(object sender, EventArgs e) // закрытие подключения к БД после закрытия приложения
         {
             connection.Close();
-        }
-        private void Select(string query)
+        } 
+        private void Select(string query) // select
         {
             cmd = new NpgsqlCommand(query, connection);
             NpgsqlDataReader reader = cmd.ExecuteReader();
@@ -89,26 +89,52 @@ namespace BD
             reader.Close();
 
         }
-        private void delete_Button(object sender, EventArgs e)
+        private void delete_Button(object sender, EventArgs e) // delete
         {
-            if (Int64.TryParse(textBox10.Text, out Int64 parsedNumber))
+            if (Int64.TryParse(textBox10.Text, out Int64 parsedNumber)) // проверка на целое число
             {
-                string query = $"delete from products where product_id={parsedNumber}";
-                cmd = new NpgsqlCommand(query, connection);
-                cmd.ExecuteNonQuery();
-                Select(select);
-                textBox10.Text = null;
+                List<string> list = new List<string>();
+
+                string sql = $"select product_id from products";
+
+                cmd = new NpgsqlCommand(sql, connection); 
+                NpgsqlDataReader reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    string item = reader[0].ToString();
+                    list.Add(item);
+                }
+                reader.Close();
+
+                bool flag = false;
+
+                foreach (string _item in list) // проверка, что такой ID есть в таблице
+                {
+                    if (textBox10.Text == _item)
+                    {
+                        flag = true;
+                        break;
+                    }
+                }
+                if (flag == false) MessageBox.Show("Такого товара нет в базе данных");
+                else
+                {
+                    string query = $"delete from order_details where product_id = {parsedNumber};" + // запрос на удаление из order_details, products
+                        $"delete from products where product_id={parsedNumber}";
+                    cmd = new NpgsqlCommand(query, connection);
+                    cmd.ExecuteNonQuery();
+                    Select(select);
+                    textBox10.Text = null;
+                }
+
             }
-            else
-            {
-                MessageBox.Show("Удаление: введите целое число");
-            }
+            else  MessageBox.Show("Удаление: введите целое число");
         }
-        private void update_Button(object sender, EventArgs e)
+        private void update_Button(object sender, EventArgs e) // update
         {
             Select(select);
         }
-        private void search_Button(object sender, EventArgs e)
+        private void search_Button(object sender, EventArgs e) // select по параметрам
         {
             bool flag = false;
             string query = "select * from products where (";
@@ -131,7 +157,7 @@ namespace BD
                 }
                 reader.Close();
 
-                foreach (string _item in list)
+                foreach (string _item in list)  // проверка, что такое название есть в бд
                 {
                     if (textBox12.Text == _item)
                     {
@@ -173,15 +199,13 @@ namespace BD
             if (textBox2.Text != "" && comboBox1.SelectedItem != null)
             {
                 string query = "insert into products(product_id, ";
-                string values = "values((select max(product_id)+1 from products)"; // product_id
+                string values = "values((select max(product_id)+1 from products), "; // product_id
                 //
                 //product_name
                 //
                 if (textBox2.Text != "")
                 {
-                    if (values.EndsWith(")")) values += ", ";
-                    if (query.EndsWith(")")) query += ", ";
-                    values += $"('{textBox2.Text}')";
+                    values += $"'{textBox2.Text}', ";
                     query += "product_name, ";
                 }
                 //
@@ -189,8 +213,7 @@ namespace BD
                 //
                 if (comboBox4.SelectedItem != null)
                 {
-                    if (values.EndsWith(")")) values += ", ";
-                    values += $"({comboBox4.Text})";
+                    values += $"{comboBox4.Text}, ";
                     query += "supplier_id, ";
                 }
                 //
@@ -198,8 +221,7 @@ namespace BD
                 //
                 if (comboBox5.SelectedItem != null)
                 {
-                    if (values.EndsWith(")")) values += ", ";
-                    values += $"({comboBox5.Text})";
+                    values += $"{comboBox5.Text}, ";
                     query += "category_id, ";
                 }
                 //
@@ -207,8 +229,7 @@ namespace BD
                 //
                 if (textBox5.Text != "")
                 {
-                    if (values.EndsWith(")")) values += ", ";
-                    values += $"('{textBox5.Text}')";
+                    values += $"'{textBox5.Text}', ";
                     query += "quantity_per_unit, ";
                 }
                 //
@@ -218,9 +239,8 @@ namespace BD
                 {
                     if (double.TryParse(textBox6.Text.Replace('.', ','), out double unit))
                     {
-                        string t = unit.ToString().Replace(',', '.');
-                        if (values.EndsWith(")")) values += ", ";
-                        values += $"({t})";
+                        string _unit = unit.ToString().Replace(',', '.');
+                        values += $"{_unit}, ";
                         query += "unit_price, ";
                     }
                     else
@@ -236,8 +256,7 @@ namespace BD
                 {
                     if (Int64.TryParse(textBox7.Text, out Int64 stock))
                     {
-                        if (values.EndsWith(")")) values += ", ";
-                        values += $"({stock})";
+                        values += $"{stock}, ";
                         query += "units_in_stock, ";
                     }
                     else
@@ -253,8 +272,7 @@ namespace BD
                 {
                     if (Int64.TryParse(textBox1.Text, out Int64 order))
                     {
-                        if (values.EndsWith(")")) values += ", ";
-                        values += $"({order})";
+                        values += $"{order}, ";
                         query += "units_on_order, ";
                     }
                     else
@@ -270,8 +288,7 @@ namespace BD
                 {
                     if (Int64.TryParse(textBox8.Text, out Int64 level))
                     {
-                        if (values.EndsWith(")")) values += ", ";
-                        values += $"({level})";
+                        values += $"{level}, ";
                         query += "reorder_level, ";
                     }
                     else
@@ -288,8 +305,7 @@ namespace BD
                     int discontinued;
                     if (comboBox1.Text == "Приостановлен") discontinued = 0;
                     else discontinued = 1;
-                    if (values.EndsWith(")")) values += ", ";
-                    values += $"({discontinued})";
+                    values += $"{discontinued}";
                     query += "discontinued";
                 }
                 query += ") ";
